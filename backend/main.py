@@ -39,6 +39,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://ai-interview-assistant-frontend-bsrq.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -163,11 +164,11 @@ def contains_non_english_characters(text):
         return False
 
     patterns = [
-        r"[\u0400-\u04FF]",  # Cyrillic
-        r"[\u3040-\u30FF]",  # Japanese
-        r"[\u3400-\u4DBF]",  # Chinese
-        r"[\u4E00-\u9FFF]",  # Chinese
-        r"[\uAC00-\uD7AF]",  # Korean
+        r"[\u0400-\u04FF]",
+        r"[\u3040-\u30FF]",
+        r"[\u3400-\u4DBF]",
+        r"[\u4E00-\u9FFF]",
+        r"[\uAC00-\uD7AF]",
     ]
 
     for pattern in patterns:
@@ -207,7 +208,6 @@ def handle_ai_error(error):
 
     print("AI SERVICE ERROR:", error)
 
-
     if (
         "429" in error_message
         or "rate limit" in error_message
@@ -225,7 +225,6 @@ def handle_ai_error(error):
             ),
         )
 
-
     if (
         "401" in error_message
         or "authentication" in error_message
@@ -240,7 +239,6 @@ def handle_ai_error(error):
             ),
         )
 
-
     if (
         "timeout" in error_message
         or "timed out" in error_message
@@ -253,7 +251,6 @@ def handle_ai_error(error):
                 "Please try again."
             ),
         )
-
 
     raise HTTPException(
         status_code=500,
@@ -278,7 +275,6 @@ def call_ai(messages):
             messages=messages,
         )
 
-
         if not completion.choices:
 
             raise HTTPException(
@@ -286,9 +282,7 @@ def call_ai(messages):
                 detail="The AI service returned no response.",
             )
 
-
         content = completion.choices[0].message.content
-
 
         if not content:
 
@@ -297,13 +291,10 @@ def call_ai(messages):
                 detail="The AI service returned an empty response.",
             )
 
-
         return clean_ai_text(content)
-
 
     except HTTPException:
         raise
-
 
     except Exception as error:
 
@@ -318,7 +309,6 @@ def call_ai(messages):
 def call_ai_english(messages):
 
     output = call_ai(messages)
-
 
     if contains_non_english_characters(output):
 
@@ -335,7 +325,6 @@ def call_ai_english(messages):
             ),
         )
 
-
     return output
 
 
@@ -351,7 +340,6 @@ async def upload_resume(
 
     global resume_text
 
-
     if file.content_type != "application/pdf":
 
         raise HTTPException(
@@ -359,12 +347,9 @@ async def upload_resume(
             detail="Please upload a PDF file.",
         )
 
-
     contents = await file.read()
 
-
     maximum_file_size = 5 * 1024 * 1024
-
 
     if len(contents) > maximum_file_size:
 
@@ -376,16 +361,13 @@ async def upload_resume(
             ),
         )
 
-
     try:
 
         reader = PdfReader(
             BytesIO(contents)
         )
 
-
         extracted_pages = []
-
 
         for page in reader.pages:
 
@@ -397,11 +379,9 @@ async def upload_resume(
                     page_text.strip()
                 )
 
-
         extracted_text = "\n".join(
             extracted_pages
         )
-
 
         if not extracted_text.strip():
 
@@ -413,18 +393,14 @@ async def upload_resume(
                 ),
             )
 
-
         resume_text = extracted_text.strip()
-
 
         return {
             "message": "Resume uploaded successfully!"
         }
 
-
     except HTTPException:
         raise
-
 
     except Exception as error:
 
@@ -432,7 +408,6 @@ async def upload_resume(
             "RESUME ERROR:",
             error,
         )
-
 
         raise HTTPException(
             status_code=500,
@@ -457,14 +432,12 @@ def analyze_resume(
             detail="Please upload a resume first.",
         )
 
-
     if not request.role.strip():
 
         raise HTTPException(
             status_code=400,
             detail="Please provide a target job role.",
         )
-
 
     messages = [
 
@@ -543,9 +516,7 @@ RULES:
 
     ]
 
-
     analysis = call_ai_english(messages)
-
 
     return {
         "analysis": analysis
@@ -569,7 +540,6 @@ def answer(
             detail="Please provide an interview question.",
         )
 
-
     if not request.role.strip():
 
         raise HTTPException(
@@ -577,9 +547,7 @@ def answer(
             detail="Please provide a target job role.",
         )
 
-
     candidate_context = get_candidate_context()
-
 
     messages = [
 
@@ -630,11 +598,9 @@ RULES:
 
     ]
 
-
     generated_answer = call_ai_english(
         messages
     )
-
 
     return {
         "answer": generated_answer
@@ -658,9 +624,7 @@ def generate_question(
             detail="Please provide a target job role.",
         )
 
-
     candidate_context = get_candidate_context()
-
 
     messages = [
 
@@ -748,11 +712,9 @@ CRITICAL RULES:
 
     ]
 
-
     question = call_ai_english(
         messages
     )
-
 
     return {
         "question": question
@@ -770,11 +732,9 @@ def parse_questions(ai_output):
 
         parsed_data = json.loads(ai_output)
 
-
         if isinstance(parsed_data, list):
 
             questions = []
-
 
             for item in parsed_data:
 
@@ -784,33 +744,26 @@ def parse_questions(ai_output):
                         clean_ai_text(item)
                     )
 
-
                     if cleaned_question:
 
                         questions.append(
                             cleaned_question
                         )
 
-
             return questions
-
 
     except json.JSONDecodeError:
 
         pass
 
-
     questions = []
-
 
     for line in ai_output.splitlines():
 
         line = line.strip()
 
-
         if not line:
             continue
-
 
         line = re.sub(
             r"^\s*\d+\s*[\.\)\-:]\s*",
@@ -818,21 +771,17 @@ def parse_questions(ai_output):
             line,
         )
 
-
         line = re.sub(
             r"^\s*[-*]\s*",
             "",
             line,
         )
 
-
         line = clean_ai_text(line)
-
 
         if line.endswith("?"):
 
             questions.append(line)
-
 
     return questions
 
@@ -854,7 +803,6 @@ def start_interview(
             detail="Please provide a target job role.",
         )
 
-
     if request.number_of_questions not in [
         5,
         10,
@@ -867,9 +815,7 @@ def start_interview(
             ),
         )
 
-
     candidate_context = get_candidate_context()
-
 
     messages = [
 
@@ -979,16 +925,13 @@ CRITICAL RULES:
 
     ]
 
-
     ai_output = call_ai_english(
         messages
     )
 
-
     questions = parse_questions(
         ai_output
     )
-
 
     if (
         len(questions)
@@ -1014,7 +957,6 @@ CRITICAL RULES:
             ai_output,
         )
 
-
         raise HTTPException(
             status_code=500,
             detail=(
@@ -1022,7 +964,6 @@ CRITICAL RULES:
                 "questions correctly. Please try again."
             ),
         )
-
 
     if len(set(questions)) != len(questions):
 
@@ -1033,7 +974,6 @@ CRITICAL RULES:
                 "Please try again."
             ),
         )
-
 
     return {
         "questions": questions
@@ -1056,7 +996,6 @@ def evaluate_answer(
             status_code=400,
             detail="Please provide an answer to evaluate.",
         )
-
 
     messages = [
 
@@ -1135,11 +1074,9 @@ CANDIDATE ANSWER:
 
     ]
 
-
     evaluation = call_ai_english(
         messages
     )
-
 
     return {
         "evaluation": evaluation
@@ -1206,11 +1143,9 @@ RULES:
 
     ]
 
-
     follow_up_question = call_ai_english(
         messages
     )
-
 
     return {
         "follow_up_question":
@@ -1237,9 +1172,7 @@ def final_report(
             ),
         )
 
-
     results_text = ""
-
 
     for index, result in enumerate(
         request.interview_results,
@@ -1266,7 +1199,6 @@ EVALUATION:
 ------------------------------
 
 """
-
 
     messages = [
 
@@ -1355,11 +1287,9 @@ RULES:
 
     ]
 
-
     report = call_ai_english(
         messages
     )
-
 
     return {
         "final_report": report
