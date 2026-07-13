@@ -433,33 +433,62 @@ function Interview() {
         }
 
         stopVoiceAnswer();
-
         window.speechSynthesis.cancel();
 
-        const speech = new SpeechSynthesisUtterance(text);
+        const speak = () => {
+            const speech = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
 
-        speech.lang = "en-US";
-        speech.rate = 0.9;
-        speech.pitch = 1;
-        speech.volume = 1;
+            const preferredVoice =
+                voices.find(
+                    (voice) =>
+                        voice.name.includes("Samantha") &&
+                        voice.lang.startsWith("en")
+                ) ||
+                voices.find(
+                    (voice) =>
+                        voice.name.includes("Google US English")
+                ) ||
+                voices.find(
+                    (voice) =>
+                        voice.lang === "en-US"
+                );
 
-        speech.onstart = () => {
-            setSpeakingQuestion(true);
+            if (preferredVoice) {
+                speech.voice = preferredVoice;
+            }
+
+            speech.lang = "en-US";
+            speech.rate = 0.9;
+            speech.pitch = 1;
+            speech.volume = 1;
+
+            speech.onstart = () => {
+                setSpeakingQuestion(true);
+            };
+
+            speech.onend = () => {
+                setSpeakingQuestion(false);
+                speechRef.current = null;
+            };
+
+            speech.onerror = () => {
+                setSpeakingQuestion(false);
+                speechRef.current = null;
+            };
+
+            speechRef.current = speech;
+            window.speechSynthesis.speak(speech);
         };
 
-        speech.onend = () => {
-            setSpeakingQuestion(false);
-            speechRef.current = null;
-        };
-
-        speech.onerror = () => {
-            setSpeakingQuestion(false);
-            speechRef.current = null;
-        };
-
-        speechRef.current = speech;
-
-        window.speechSynthesis.speak(speech);
+        if (window.speechSynthesis.getVoices().length === 0) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                speak();
+                window.speechSynthesis.onvoiceschanged = null;
+            };
+        } else {
+            speak();
+        }
     };
 
     // ==========================
